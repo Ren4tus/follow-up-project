@@ -58,7 +58,7 @@ Module Program
                 connection.Open()
 
                 ' 테이블이 없으면 자동 생성 (로컬 테스트용)
-                Dim createTableQuery As String = "CREATE TABLE IF NOT EXISTS UserTable (Id TEXT PRIMARY KEY, Name TEXT, Gender TEXT, Age TEXT, current_process TEXT);"
+                Dim createTableQuery As String = "CREATE TABLE IF NOT EXISTS UserTable (Id TEXT PRIMARY KEY, Name TEXT, Gender TEXT, Age TEXT, current_process TEXT, From TEXT);"
                 Using createCmd As New SQLiteCommand(createTableQuery, connection)
                     createCmd.ExecuteNonQuery()
                 End Using
@@ -86,7 +86,7 @@ Module Program
 
                             If count = 0 Then
                                 ' 3. 중복되지 않는 데이터만 'wait' 상태로 Insert
-                            Dim insertQuery As String = "INSERT INTO UserTable (Id, Name, Gender, Age, current_process) VALUES (@Id, @Name, @Gender, @Age, 'wait')"
+                            Dim insertQuery As String = "INSERT INTO UserTable (Id, Name, Gender, Age, current_process, From) VALUES (@Id, @Name, @Gender, @Age, 'wait', 'Batch')"
                                 Using insertCommand As New SQLiteCommand(insertQuery, connection)
                                     insertCommand.Parameters.AddWithValue("@Id", id)
                                 insertCommand.Parameters.AddWithValue("@Name", name)

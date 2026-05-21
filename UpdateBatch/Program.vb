@@ -55,7 +55,7 @@ Module Program
                 connection.Open()
 
                 ' 테이블이 없으면 자동 생성 (로컬 테스트용)
-                Dim createTableQuery As String = "CREATE TABLE IF NOT EXISTS UserTable (Id TEXT PRIMARY KEY, Name TEXT, Gender TEXT, Age TEXT, current_process TEXT);"
+                Dim createTableQuery As String = "CREATE TABLE IF NOT EXISTS UserTable (Id TEXT PRIMARY KEY, Name TEXT, Gender TEXT, Age TEXT, current_process TEXT, From TEXT);"
                 Using createCmd As New SQLiteCommand(createTableQuery, connection)
                     createCmd.ExecuteNonQuery()
                 End Using
@@ -80,9 +80,9 @@ Module Program
 
                         Using command As New SQLiteCommand(updateQuery, connection)
                             command.Parameters.AddWithValue("@Id", id)
-                        command.Parameters.AddWithValue("@Name", name)
-                        command.Parameters.AddWithValue("@Gender", gender)
-                        command.Parameters.AddWithValue("@Age", age)
+                            command.Parameters.AddWithValue("@Name", name)
+                            command.Parameters.AddWithValue("@Gender", gender)
+                            command.Parameters.AddWithValue("@Age", age)
 
                             Dim rowsAffected As Integer = command.ExecuteNonQuery()
 
