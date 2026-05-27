@@ -1,11 +1,13 @@
 Imports System
 Imports System.IO
 Imports System.Data.SQLite
+Imports SharedLibrary
 Imports System.Threading
 
 Module Program
     Sub Main(args As String())
-        Console.WriteLine("[UpdateBatch] 데이터 업데이트 배치를 시작합니다.")
+        Dim logFile As String = "UpdateBatch.log"
+        SharedUtils.LogMessage(logFile, "[UpdateBatch] 데이터 업데이트 배치를 시작합니다.")
 
         Dim movedCsvPath As String = "../moved_data/input.csv"
         ' 로컬 테스트를 위한 SQLite DB 파일 경로
@@ -37,28 +39,25 @@ Module Program
             File.WriteAllText(configPath, $"scan_interval_seconds=5{Environment.NewLine}diagnose=false{Environment.NewLine}")
         End If
 
-        Console.WriteLine($"[UpdateBatch] 폴더 스캔을 시작합니다. (주기: {scanIntervalMs / 1000}초)")
+        SharedUtils.LogMessage(logFile, $"[UpdateBatch] 폴더 스캔을 시작합니다. (주기: {scanIntervalMs / 1000}초)")
 
         While True
             If Not File.Exists(movedCsvPath) Then
                 If diagnose Then
-                    Console.WriteLine($"[Diagnose] 대상 데이터 파일이 없어 업데이트를 건너뜁니다: {movedCsvPath}")
+                    SharedUtils.LogMessage(logFile, $"[Diagnose] 대상 데이터 파일이 없어 업데이트를 건너뜁니다: {movedCsvPath}")
                 End If
                 Thread.Sleep(scanIntervalMs)
                 Continue While
             End If
 
-            Console.WriteLine($"[Info] 파일을 발견하여 업데이트를 시작합니다: {movedCsvPath}")
+            SharedUtils.LogMessage(logFile, $"[Info] 파일을 발견하여 업데이트를 시작합니다: {movedCsvPath}")
 
         Try
             Using connection As New SQLiteConnection(connectionString)
                 connection.Open()
 
-                ' 테이블이 없으면 자동 생성 (로컬 테스트용)
-                Dim createTableQuery As String = "CREATE TABLE IF NOT EXISTS UserTable (Id TEXT PRIMARY KEY, Name TEXT, Gender TEXT, Age TEXT, current_process TEXT);"
-                Using createCmd As New SQLiteCommand(createTableQuery, connection)
-                    createCmd.ExecuteNonQuery()
-                End Using
+                ' 공통 테이블 생성 및 갱신 로직
+                SharedUtils.EnsureTableSchema(connection)
 
                 ' CSV 파일 읽기
                 Dim lines As String() = File.ReadAllLines(movedCsvPath)
@@ -80,16 +79,16 @@ Module Program
 
                         Using command As New SQLiteCommand(updateQuery, connection)
                             command.Parameters.AddWithValue("@Id", id)
-                        command.Parameters.AddWithValue("@Name", name)
-                        command.Parameters.AddWithValue("@Gender", gender)
-                        command.Parameters.AddWithValue("@Age", age)
+                            command.Parameters.AddWithValue("@Name", name)
+                            command.Parameters.AddWithValue("@Gender", gender)
+                            command.Parameters.AddWithValue("@Age", age)
 
                             Dim rowsAffected As Integer = command.ExecuteNonQuery()
 
                             If rowsAffected > 0 Then
-                                Console.WriteLine($"[Success] ID: {id} - 정보 업데이트 및 complete 상태로 갱신되었습니다.")
+                                SharedUtils.LogMessage(logFile, $"[Success] ID: {id} - 정보 업데이트 및 complete 상태로 갱신되었습니다.")
                             Else
-                                Console.WriteLine($"[Skipped] ID: {id} - 조건에 맞지 않아(예: 이미 complete 상태) 건너뛰었습니다.")
+                                SharedUtils.LogMessage(logFile, $"[Skipped] ID: {id} - 조건에 맞지 않아(예: 이미 complete 상태) 건너뛰었습니다.")
                             End If
                         End Using
                     End If
@@ -98,13 +97,13 @@ Module Program
 
             ' 반복 처리 방지를 위해 처리가 완료된 파일은 삭제
             File.Delete(movedCsvPath)
-            Console.WriteLine($"[Info] 데이터 업데이트가 완료되어 파일이 삭제되었습니다: {movedCsvPath}")
+            SharedUtils.LogMessage(logFile, $"[Info] 데이터 업데이트가 완료되어 파일이 삭제되었습니다: {movedCsvPath}")
 
         Catch ex As Exception
-            Console.WriteLine($"[Error] 배치 실행 중 오류가 발생했습니다: {ex.Message}")
+            SharedUtils.LogMessage(logFile, $"[Error] 배치 실행 중 오류가 발생했습니다: {ex.Message}")
         End Try
 
-            Console.WriteLine("[UpdateBatch] 다음 스캔을 대기합니다...")
+            SharedUtils.LogMessage(logFile, "[UpdateBatch] 다음 스캔을 대기합니다...")
             Thread.Sleep(scanIntervalMs)
         End While
     End Sub

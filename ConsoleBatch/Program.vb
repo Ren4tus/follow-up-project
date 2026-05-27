@@ -1,11 +1,13 @@
 Imports System
 Imports System.IO
 Imports System.Data.SQLite
+Imports SharedLibrary
 Imports System.Threading
 
 Module Program
     Sub Main(args As String())
-        Console.WriteLine("[ConsoleBatch] 데이터 인서트 배치를 시작합니다.")
+        Dim logFile As String = "ConsoleBatch.log"
+        SharedUtils.LogMessage(logFile, "[ConsoleBatch] 데이터 인서트 배치를 시작합니다.")
 
         ' 처리 후 ../moved_data 폴더로 이동할 CSV 파일 경로
         Dim sourceCsvPath As String = "../input_data/input.csv"
@@ -40,28 +42,25 @@ Module Program
             File.WriteAllText(configPath, $"scan_interval_seconds=5{Environment.NewLine}diagnose=false{Environment.NewLine}")
         End If
 
-        Console.WriteLine($"[ConsoleBatch] 폴더 스캔을 시작합니다. (주기: {scanIntervalMs / 1000}초)")
+        SharedUtils.LogMessage(logFile, $"[ConsoleBatch] 폴더 스캔을 시작합니다. (주기: {scanIntervalMs / 1000}초)")
 
         While True
             If Not File.Exists(sourceCsvPath) Then
                 If diagnose Then
-                    Console.WriteLine($"[Diagnose] 대상 데이터 파일이 없어 처리를 건너뜁니다: {sourceCsvPath}")
+                    SharedUtils.LogMessage(logFile, $"[Diagnose] 대상 데이터 파일이 없어 처리를 건너뜁니다: {sourceCsvPath}")
                 End If
                 Thread.Sleep(scanIntervalMs)
                 Continue While
             End If
 
-            Console.WriteLine($"[Info] 파일을 발견하여 처리를 시작합니다: {sourceCsvPath}")
+            SharedUtils.LogMessage(logFile, $"[Info] 파일을 발견하여 처리를 시작합니다: {sourceCsvPath}")
 
         Try
             Using connection As New SQLiteConnection(connectionString)
                 connection.Open()
 
-                ' 테이블이 없으면 자동 생성 (로컬 테스트용)
-                Dim createTableQuery As String = "CREATE TABLE IF NOT EXISTS UserTable (Id TEXT PRIMARY KEY, Name TEXT, Gender TEXT, Age TEXT, current_process TEXT);"
-                Using createCmd As New SQLiteCommand(createTableQuery, connection)
-                    createCmd.ExecuteNonQuery()
-                End Using
+                ' 공통 테이블 생성 및 갱신 로직
+                SharedUtils.EnsureTableSchema(connection)
 
                 ' 1. CSV 파일 읽기
                 Dim lines As String() = File.ReadAllLines(sourceCsvPath)
@@ -86,17 +85,17 @@ Module Program
 
                             If count = 0 Then
                                 ' 3. 중복되지 않는 데이터만 'wait' 상태로 Insert
-                            Dim insertQuery As String = "INSERT INTO UserTable (Id, Name, Gender, Age, current_process) VALUES (@Id, @Name, @Gender, @Age, 'wait')"
+                            Dim insertQuery As String = "INSERT INTO UserTable (Id, Name, Gender, Age, current_process, InputSource) VALUES (@Id, @Name, @Gender, @Age, 'wait', 'Batch')"
                                 Using insertCommand As New SQLiteCommand(insertQuery, connection)
                                     insertCommand.Parameters.AddWithValue("@Id", id)
                                 insertCommand.Parameters.AddWithValue("@Name", name)
                                 insertCommand.Parameters.AddWithValue("@Gender", gender)
                                 insertCommand.Parameters.AddWithValue("@Age", age)
                                     insertCommand.ExecuteNonQuery()
-                                    Console.WriteLine($"[Success] ID: {id} - 데이터가 wait 상태로 Insert 되었습니다.")
+                                    SharedUtils.LogMessage(logFile, $"[Success] ID: {id} - 데이터가 wait 상태로 Insert 되었습니다.")
                                 End Using
                             Else
-                                Console.WriteLine($"[Skipped] ID: {id} - 이미 존재하는 데이터이므로 Insert를 건너뛰었습니다.")
+                                SharedUtils.LogMessage(logFile, $"[Skipped] ID: {id} - 이미 존재하는 데이터이므로 Insert를 건너뛰었습니다.")
                             End If
                         End Using
                     End If
@@ -107,12 +106,12 @@ Module Program
             If Not Directory.Exists(targetFolder) Then Directory.CreateDirectory(targetFolder)
             If File.Exists(targetCsvPath) Then File.Delete(targetCsvPath) ' 이미 이동된 파일이 있으면 덮어쓰기 위해 삭제
             File.Move(sourceCsvPath, targetCsvPath)
-            Console.WriteLine($"[Info] 파일 처리가 끝나 대상 폴더로 이동되었습니다: {targetCsvPath}")
+            SharedUtils.LogMessage(logFile, $"[Info] 파일 처리가 끝나 대상 폴더로 이동되었습니다: {targetCsvPath}")
         Catch ex As Exception
-            Console.WriteLine($"[Error] 배치 실행 중 오류가 발생했습니다: {ex.Message}")
+            SharedUtils.LogMessage(logFile, $"[Error] 배치 실행 중 오류가 발생했습니다: {ex.Message}")
         End Try
 
-            Console.WriteLine("[ConsoleBatch] 다음 스캔을 대기합니다...")
+            SharedUtils.LogMessage(logFile, "[ConsoleBatch] 다음 스캔을 대기합니다...")
             Thread.Sleep(scanIntervalMs)
         End While
     End Sub
