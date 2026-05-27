@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <!-- Use the Directory.Build.targets file location (repo root) to locate packages reliably -->
+    <SQLiteStub>$(MSBuildThisFileDirectory)packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\build\net46</SQLiteStub>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <_SQLiteX86 Include="$(SQLiteStub)\x86\SQLite.Interop.dll" Condition="Exists('$(SQLiteStub)\x86\SQLite.Interop.dll')" />
+    <_SQLiteX64 Include="$(SQLiteStub)\x64\SQLite.Interop.dll" Condition="Exists('$(SQLiteStub)\x64\SQLite.Interop.dll')" />
+  </ItemGroup>
+
+  <Target Name="CopySQLiteInteropFiles" AfterTargets="Build">
+    <Message Importance="High" Text="Copying SQLite.Interop native binaries to output folders..." />
+    <Copy SourceFiles="@(_SQLiteX86)" DestinationFolder="$(OutDir)x86\" SkipUnchangedFiles="true" Condition="@(_SQLiteX86) != ''" />
+    <Copy SourceFiles="@(_SQLiteX64)" DestinationFolder="$(OutDir)x64\" SkipUnchangedFiles="true" Condition="@(_SQLiteX64) != ''" />
+  </Target>
+</Project>
