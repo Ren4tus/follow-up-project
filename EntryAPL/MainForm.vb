@@ -28,9 +28,9 @@ Public Class MainForm
 
     Public Sub New()
         InitializeComponent()
-        Me.Text = "EntryAPL - 데이터 목록"
-        Me.Size = New Size(700, 500)
-        Me.StartPosition = FormStartPosition.CenterScreen
+        'Me.Text = "EntryAPL - 데이터 목록"
+        'Me.Size = New Size(700, 500)
+        'Me.StartPosition = FormStartPosition.CenterScreen
 
         InitializeDBConnection()
         'InitializeUI()
