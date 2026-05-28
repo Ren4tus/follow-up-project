@@ -12,19 +12,19 @@ Public Class MainForm
 
     Private connectionString As String
     Private dataTable As DataTable
-    Private dgvData As DataGridView
-    
-    Private txtSearchId As TextBox
-    Private txtSearchName As TextBox
-    Private txtSearchGender As TextBox
-    Private txtSearchAge As TextBox
-    Private txtSearchProcess As TextBox
-    Private txtSearchSource As TextBox
-    Private btnSearch As Button
-    Private btnRefresh As Button
-    
-    Private txtIdInput As TextBox
-    Private btnConfirm As Button
+    'Private dgvData As DataGridView
+
+    'Private txtSearchId As TextBox
+    'Private txtSearchName As TextBox
+    'Private txtSearchGender As TextBox
+    'Private txtSearchAge As TextBox
+    'Private txtSearchProcess As TextBox
+    'Private txtSearchSource As TextBox
+    'Private btnSearch As Button
+    'Private btnRefresh As Button
+
+    'Private txtIdInput As TextBox
+    'Private btnConfirm As Button
 
     Public Sub New()
         InitializeComponent()
@@ -33,7 +33,7 @@ Public Class MainForm
         Me.StartPosition = FormStartPosition.CenterScreen
 
         InitializeDBConnection()
-        InitializeUI()
+        'InitializeUI()
         LoadData()
     End Sub
 
@@ -65,75 +65,75 @@ Public Class MainForm
         End Try
     End Sub
 
-    Private Sub InitializeUI()
-        ' Search panel
-        Dim pnlTop = New Panel() With { .Dock = DockStyle.Top, .Height = 75 }
-        
-        ' Row 1
-        pnlTop.Controls.Add(New Label() With { .Text = "ID:", .Location = New Point(10, 15), .AutoSize = True })
-        txtSearchId = New TextBox() With { .Location = New Point(40, 12), .Width = 95 }
-        pnlTop.Controls.Add(txtSearchId)
+    'Private Sub InitializeUI()
+    '    ' Search panel
+    '    Dim pnlTop = New Panel() With { .Dock = DockStyle.Top, .Height = 75 }
 
-        pnlTop.Controls.Add(New Label() With { .Text = "이름:", .Location = New Point(150, 15), .AutoSize = True })
-        txtSearchName = New TextBox() With { .Location = New Point(190, 12), .Width = 95 }
-        pnlTop.Controls.Add(txtSearchName)
+    '    ' Row 1
+    '    pnlTop.Controls.Add(New Label() With { .Text = "ID:", .Location = New Point(10, 15), .AutoSize = True })
+    '    txtSearchId = New TextBox() With { .Location = New Point(40, 12), .Width = 95 }
+    '    pnlTop.Controls.Add(txtSearchId)
 
-        pnlTop.Controls.Add(New Label() With { .Text = "성별:", .Location = New Point(300, 15), .AutoSize = True })
-        txtSearchGender = New TextBox() With { .Location = New Point(340, 12), .Width = 55 }
-        pnlTop.Controls.Add(txtSearchGender)
+    '    pnlTop.Controls.Add(New Label() With { .Text = "이름:", .Location = New Point(150, 15), .AutoSize = True })
+    '    txtSearchName = New TextBox() With { .Location = New Point(190, 12), .Width = 95 }
+    '    pnlTop.Controls.Add(txtSearchName)
 
-        ' Row 2
-        pnlTop.Controls.Add(New Label() With { .Text = "나이:", .Location = New Point(10, 42), .AutoSize = True })
-        txtSearchAge = New TextBox() With { .Location = New Point(45, 39), .Width = 90 }
-        pnlTop.Controls.Add(txtSearchAge)
+    '    pnlTop.Controls.Add(New Label() With { .Text = "성별:", .Location = New Point(300, 15), .AutoSize = True })
+    '    txtSearchGender = New TextBox() With { .Location = New Point(340, 12), .Width = 55 }
+    '    pnlTop.Controls.Add(txtSearchGender)
 
-        pnlTop.Controls.Add(New Label() With { .Text = "프로세스:", .Location = New Point(150, 42), .AutoSize = True })
-        txtSearchProcess = New TextBox() With { .Location = New Point(210, 39), .Width = 75 }
-        pnlTop.Controls.Add(txtSearchProcess)
+    '    ' Row 2
+    '    pnlTop.Controls.Add(New Label() With { .Text = "나이:", .Location = New Point(10, 42), .AutoSize = True })
+    '    txtSearchAge = New TextBox() With { .Location = New Point(45, 39), .Width = 90 }
+    '    pnlTop.Controls.Add(txtSearchAge)
 
-        pnlTop.Controls.Add(New Label() With { .Text = "소스:", .Location = New Point(300, 42), .AutoSize = True })
-        txtSearchSource = New TextBox() With { .Location = New Point(340, 39), .Width = 55 }
-        pnlTop.Controls.Add(txtSearchSource)
+    '    pnlTop.Controls.Add(New Label() With { .Text = "프로세스:", .Location = New Point(150, 42), .AutoSize = True })
+    '    txtSearchProcess = New TextBox() With { .Location = New Point(210, 39), .Width = 75 }
+    '    pnlTop.Controls.Add(txtSearchProcess)
 
-        btnSearch = New Button() With { .Text = "검색", .Location = New Point(410, 10), .Width = 60, .Height = 50 }
-        AddHandler btnSearch.Click, AddressOf btnSearch_Click
-        pnlTop.Controls.Add(btnSearch)
+    '    pnlTop.Controls.Add(New Label() With { .Text = "소스:", .Location = New Point(300, 42), .AutoSize = True })
+    '    txtSearchSource = New TextBox() With { .Location = New Point(340, 39), .Width = 55 }
+    '    pnlTop.Controls.Add(txtSearchSource)
 
-        btnRefresh = New Button() With { .Text = "초기화", .Location = New Point(480, 10), .Width = 60, .Height = 50 }
-        AddHandler btnRefresh.Click, AddressOf btnRefresh_Click
-        pnlTop.Controls.Add(btnRefresh)
+    '    btnSearch = New Button() With { .Text = "검색", .Location = New Point(410, 10), .Width = 60, .Height = 50 }
+    '    AddHandler btnSearch.Click, AddressOf btnSearch_Click
+    '    pnlTop.Controls.Add(btnSearch)
 
-        Me.Controls.Add(pnlTop)
+    '    btnRefresh = New Button() With { .Text = "초기화", .Location = New Point(480, 10), .Width = 60, .Height = 50 }
+    '    AddHandler btnRefresh.Click, AddressOf btnRefresh_Click
+    '    pnlTop.Controls.Add(btnRefresh)
 
-        ' Grid
-        dgvData = New DataGridView() With {
-            .Dock = DockStyle.Fill,
-            .AllowUserToAddRows = False,
-            .AllowUserToDeleteRows = False,
-            .ReadOnly = True,
-            .SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            .MultiSelect = False,
-            .AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-        }
-        AddHandler dgvData.CellDoubleClick, AddressOf dgvData_CellDoubleClick
-        Me.Controls.Add(dgvData)
+    '    Me.Controls.Add(pnlTop)
 
-        ' Bottom panel for direct ID input
-        Dim pnlBottom = New Panel() With { .Dock = DockStyle.Bottom, .Height = 50 }
-        
-        pnlBottom.Controls.Add(New Label() With { .Text = "선택된 ID 또는 직접 입력:", .Location = New Point(10, 15), .AutoSize = True })
-        txtIdInput = New TextBox() With { .Location = New Point(160, 12), .Width = 150 }
-        pnlBottom.Controls.Add(txtIdInput)
+    '    ' Grid
+    '    dgvData = New DataGridView() With {
+    '        .Dock = DockStyle.Fill,
+    '        .AllowUserToAddRows = False,
+    '        .AllowUserToDeleteRows = False,
+    '        .ReadOnly = True,
+    '        .SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+    '        .MultiSelect = False,
+    '        .AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+    '    }
+    '    AddHandler dgvData.CellDoubleClick, AddressOf dgvData_CellDoubleClick
+    '    Me.Controls.Add(dgvData)
 
-        btnConfirm = New Button() With { .Text = "확인 (상세보기)", .Location = New Point(320, 10), .Width = 120, .Height = 25 }
-        AddHandler btnConfirm.Click, AddressOf btnConfirm_Click
-        pnlBottom.Controls.Add(btnConfirm)
+    '    ' Bottom panel for direct ID input
+    '    Dim pnlBottom = New Panel() With { .Dock = DockStyle.Bottom, .Height = 50 }
 
-        ' Update txtIdInput when grid selection changes
-        AddHandler dgvData.SelectionChanged, AddressOf dgvData_SelectionChanged
+    '    pnlBottom.Controls.Add(New Label() With { .Text = "선택된 ID 또는 직접 입력:", .Location = New Point(10, 15), .AutoSize = True })
+    '    txtIdInput = New TextBox() With { .Location = New Point(160, 12), .Width = 150 }
+    '    pnlBottom.Controls.Add(txtIdInput)
 
-        Me.Controls.Add(pnlBottom)
-    End Sub
+    '    btnConfirm = New Button() With { .Text = "확인 (상세보기)", .Location = New Point(320, 10), .Width = 120, .Height = 25 }
+    '    AddHandler btnConfirm.Click, AddressOf btnConfirm_Click
+    '    pnlBottom.Controls.Add(btnConfirm)
+
+    '    ' Update txtIdInput when grid selection changes
+    '    AddHandler dgvData.SelectionChanged, AddressOf dgvData_SelectionChanged
+
+    '    Me.Controls.Add(pnlBottom)
+    'End Sub
 
     Private Sub LoadData()
         Try
@@ -153,15 +153,15 @@ Public Class MainForm
         End Try
     End Sub
 
-    Private Sub btnSearch_Click(sender As Object, e As EventArgs)
+    Private Sub btnSearch_Click(sender As Object, e As EventArgs) Handles btnSearch.Click
         If dataTable Is Nothing Then Return
-        
+
         Dim filters As New List(Of String)()
-        
+
         If Not String.IsNullOrWhiteSpace(txtSearchId.Text) Then filters.Add($"Id LIKE '%{txtSearchId.Text.Trim().Replace("'", "''")}%'")
         If Not String.IsNullOrWhiteSpace(txtSearchName.Text) Then filters.Add($"name LIKE '%{txtSearchName.Text.Trim().Replace("'", "''")}%'")
         If Not String.IsNullOrWhiteSpace(txtSearchGender.Text) Then filters.Add($"gender LIKE '%{txtSearchGender.Text.Trim().Replace("'", "''")}%'")
-        
+
         If Not String.IsNullOrWhiteSpace(txtSearchAge.Text) Then
             Dim ageVal As Integer
             If Integer.TryParse(txtSearchAge.Text.Trim(), ageVal) Then
@@ -181,7 +181,7 @@ Public Class MainForm
         End If
     End Sub
 
-    Private Sub btnRefresh_Click(sender As Object, e As EventArgs)
+    Private Sub btnRefresh_Click(sender As Object, e As EventArgs) Handles btnRefresh.Click
         txtSearchId.Clear()
         txtSearchName.Clear()
         txtSearchGender.Clear()
@@ -194,7 +194,7 @@ Public Class MainForm
         LoadData()
     End Sub
 
-    Private Sub dgvData_SelectionChanged(sender As Object, e As EventArgs)
+    Private Sub dgvData_SelectionChanged(sender As Object, e As EventArgs) Handles dgvData.SelectionChanged
         If dgvData.CurrentRow IsNot Nothing AndAlso dgvData.CurrentRow.Index >= 0 Then
             Dim idValue = dgvData.CurrentRow.Cells("Id").Value
             If idValue IsNot Nothing AndAlso Not DBNull.Value.Equals(idValue) Then
@@ -203,7 +203,7 @@ Public Class MainForm
         End If
     End Sub
 
-    Private Sub dgvData_CellDoubleClick(sender As Object, e As DataGridViewCellEventArgs)
+    Private Sub dgvData_CellDoubleClick(sender As Object, e As DataGridViewCellEventArgs) Handles dgvData.CellDoubleClick
         If e.RowIndex >= 0 Then
             Dim idValue = dgvData.Rows(e.RowIndex).Cells("Id").Value
             If idValue IsNot Nothing AndAlso Not DBNull.Value.Equals(idValue) Then
@@ -212,7 +212,7 @@ Public Class MainForm
         End If
     End Sub
 
-    Private Sub btnConfirm_Click(sender As Object, e As EventArgs)
+    Private Sub btnConfirm_Click(sender As Object, e As EventArgs) Handles btnConfirm.Click
         Dim targetId As String = txtIdInput.Text.Trim()
         If String.IsNullOrEmpty(targetId) Then
             MessageBox.Show("ID를 입력하거나 목록에서 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Warning)
@@ -231,5 +231,4 @@ Public Class MainForm
         Me.Hide()
         detailForm.Show()
     End Sub
-
 End Class
