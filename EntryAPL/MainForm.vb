@@ -49,7 +49,7 @@ Public Class MainForm
         End While
 
         If String.IsNullOrEmpty(dbPath) Then
-            MessageBox.Show("local.db 파일을 찾을 수 없습니다.", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            MessageBox.Show("local.db 파일을 찾을 수 없습니다. Merge Test Text 1", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
             Environment.Exit(1)
         End If
 
