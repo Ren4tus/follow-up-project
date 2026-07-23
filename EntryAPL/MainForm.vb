@@ -49,10 +49,13 @@ Public Class MainForm
         End While
 
         If String.IsNullOrEmpty(dbPath) Then
-            MessageBox.Show("local.db 파일을 찾을 수 없습니다.", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            MessageBox.Show("Merge Test TEXT 2 local.db 파일을 찾을 수 없습니다.", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
             Environment.Exit(1)
         End If
 
+        ' Test Line
+        Dim a As Integer = 3
+            
         connectionString = $"Data Source={dbPath};Version=3;"
         
         Try
