@@ -18,6 +18,7 @@ Public Class MainForm
         InitializeComponent()
         ' Initialize Component manually
         Me.Text = "IndexAPL - 회원 등록"
+        Me.Text = "IndexAPL - 회원 등록2"
         Me.Size = New Size(320, 260)
         Me.StartPosition = FormStartPosition.CenterScreen
         Me.FormBorderStyle = FormBorderStyle.FixedDialog
