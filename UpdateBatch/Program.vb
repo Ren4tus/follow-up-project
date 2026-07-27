@@ -7,7 +7,6 @@ Imports System.Threading
 Module Program
     Sub Main(args As String())
         Dim logFile As String = "UpdateBatch.log"
-        SharedUtils.LogMessage(logFile, "[UpdateBatch] 데이터 업데이트 배치를 시작합니다.")
 
         Dim movedCsvPath As String = "../moved_data/input.csv"
         ' 로컬 테스트를 위한 SQLite DB 파일 경로
