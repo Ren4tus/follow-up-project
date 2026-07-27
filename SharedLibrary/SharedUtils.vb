@@ -39,7 +39,16 @@ Public Module SharedUtils
 
         ' 필요한 전체 컬럼 정의. 여기에 컬럼을 추가하면 배치 실행 시 자동으로 반영
         Dim requiredColumns As New Dictionary(Of String, String) From {
-            {"name", "TEXT"},
+            {"contractorNameKanji", "Text"},
+            {"contractorNameKana", "Text"},
+            {"contractorAddressKanji", "Text"},
+            {"contractorAddressKana", "Text"},
+            {"contractorDateofBirth", "Text"},
+            {"recipientNameKanji", "Text"},
+            {"recipientNameKana", "Text"},
+            {"recipientAddressKanji", "Text"},
+            {"recipientAddressKana", "Text"},
+            {"recipientDateofBirth", "TEXT"},
             {"gender", "TEXT"},
             {"age", "TEXT"},
             {"current_process", "TEXT"},
