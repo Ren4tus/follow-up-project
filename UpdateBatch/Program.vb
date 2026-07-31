@@ -59,39 +59,57 @@ Module Program
                 ' 공통 테이블 생성 및 갱신 로직
                 SharedUtils.EnsureTableSchema(connection)
 
-                ' CSV 파일 읽기
-                Dim lines As String() = File.ReadAllLines(movedCsvPath)
+                    ' CSV 파일 읽기
+                    Dim lines As String() = File.ReadAllLines(movedCsvPath, Encoding.GetEncoding("Shift_JIS"))
 
-                ' 첫 번째 줄이 헤더라고 가정하고 두 번째 줄부터 순회
-                For i As Integer = 1 To lines.Length - 1
+                    ' 첫 번째 줄이 헤더라고 가정하고 두 번째 줄부터 순회
+                    For i As Integer = 1 To lines.Length - 1
                     Dim line As String = lines(i)
                     If String.IsNullOrWhiteSpace(line) Then Continue For
 
                     Dim columns As String() = line.Split(","c)
                 If columns.Length >= 4 Then
-                    Dim name As String = columns(0).Trim()
-                    Dim gender As String = columns(1).Trim()
-                    Dim age As String = columns(2).Trim()
-                    Dim id As String = columns(3).Trim()
+                            Dim contractorNameKanji As String = columns(0).Trim()
+                            Dim contractorNameKana As String = columns(1).Trim()
+                            Dim contractorAddressKanji As String = columns(2).Trim()
+                            Dim contractorAddressKana As String = columns(3).Trim()
+                            Dim contractorDateofBirth As String = columns(4).Trim()
+                            Dim recipientNameKanji As String = columns(5).Trim()
+                            Dim recipientNameKana As String = columns(6).Trim()
+                            Dim recipientAddressKanji As String = columns(7).Trim()
+                            Dim recipientAddressKana As String = columns(8).Trim()
+                            Dim recipientDateofBirth As String = columns(9).Trim()
+                            Dim id As String = columns(10).Trim()
+                            Dim gender As String = columns(11).Trim()
+                            Dim age As String = AgeCalculator(DateOfBirthValidation(contractorDateofBirth))
 
-                        ' current_process가 'wait'인 경우에만 유저 정보를 업데이트하고 'complete'로 갱신
-                    Dim updateQuery As String = "UPDATE UserTable SET Name = @Name, Gender = @Gender, Age = @Age, current_process = 'complete' WHERE Id = @Id AND current_process = 'wait'"
+                            ' current_process가 'wait'인 경우에만 유저 정보를 업데이트하고 'complete'로 갱신
+                            Dim updateQuery As String = "UPDATE UserTable SET contractorNameKanji = @contractorNameKanji, contractorNameKana = @contractorNameKana, contractorAddressKanji = @contractorAddressKanji, contractorAddressKana = @contractorAddressKana, contractorDateofBirth = @contractorDateofBirth, recipientNameKanji = @recipientNameKanji, recipientNameKana = @recipientNameKana, recipientAddressKanji = @recipientAddressKanji, recipientAddressKana = @recipientAddressKana, recipientDateofBirth = @recipientDateofBirth, gender = @Gender, age = @Age, current_process = 'complete' WHERE id=@id AND current_process = 'wait'"
 
-                        Using command As New SQLiteCommand(updateQuery, connection)
-                            command.Parameters.AddWithValue("@Id", id)
-                            command.Parameters.AddWithValue("@Name", name)
-                            command.Parameters.AddWithValue("@Gender", gender)
-                            command.Parameters.AddWithValue("@Age", age)
+                            Using command As New SQLiteCommand(updateQuery, connection)
+                                command.Parameters.AddWithValue("@id", id)
+                                command.Parameters.AddWithValue("@contractorNameKanji", contractorNameKanji)
+                                command.Parameters.AddWithValue("@contractorNameKana", contractorNameKana)
+                                command.Parameters.AddWithValue("@contractorAddressKanji", contractorAddressKanji)
+                                command.Parameters.AddWithValue("@contractorAddressKana", contractorAddressKana)
+                                command.Parameters.AddWithValue("@contractorDateofBirth", contractorDateofBirth)
+                                command.Parameters.AddWithValue("@recipientNameKanji", recipientNameKanji)
+                                command.Parameters.AddWithValue("@recipientNameKana", recipientNameKana)
+                                command.Parameters.AddWithValue("@recipientAddressKanji", recipientAddressKanji)
+                                command.Parameters.AddWithValue("@recipientAddressKana", recipientAddressKana)
+                                command.Parameters.AddWithValue("@recipientDateofBirth", recipientDateofBirth)
+                                command.Parameters.AddWithValue("@Gender", gender)
+                                command.Parameters.AddWithValue("@Age", age)
 
-                            Dim rowsAffected As Integer = command.ExecuteNonQuery()
+                                Dim rowsAffected As Integer = command.ExecuteNonQuery()
 
-                            If rowsAffected > 0 Then
-                                SharedUtils.LogMessage(logFile, $"[Success] ID: {id} - 정보 업데이트 및 complete 상태로 갱신되었습니다.")
-                            Else
-                                SharedUtils.LogMessage(logFile, $"[Skipped] ID: {id} - 조건에 맞지 않아(예: 이미 complete 상태) 건너뛰었습니다.")
-                            End If
-                        End Using
-                    End If
+                                If rowsAffected > 0 Then
+                                    SharedUtils.LogMessage(logFile, $"[Success] ID: {id} - 정보 업데이트 및 complete 상태로 갱신되었습니다.")
+                                Else
+                                    SharedUtils.LogMessage(logFile, $"[Skipped] ID: {id} - 조건에 맞지 않아(예: 이미 complete 상태) 건너뛰었습니다.")
+                                End If
+                            End Using
+                        End If
                 Next
             End Using
 

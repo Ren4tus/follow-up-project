@@ -62,34 +62,52 @@ Module Program
                 ' 공통 테이블 생성 및 갱신 로직
                 SharedUtils.EnsureTableSchema(connection)
 
-                ' 1. CSV 파일 읽기
-                Dim lines As String() = File.ReadAllLines(sourceCsvPath)
+                    ' 1. CSV 파일 읽기
+                    Dim lines As String() = File.ReadAllLines(sourceCsvPath, Encoding.GetEncoding("Shift_JIS"))
 
-                ' 첫 번째 줄이 헤더(Header)라고 가정하고 두 번째 줄부터 순회
-                For i As Integer = 1 To lines.Length - 1
+                    ' 첫 번째 줄이 헤더(Header)라고 가정하고 두 번째 줄부터 순회
+                    For i As Integer = 1 To lines.Length - 1
                     Dim line As String = lines(i)
                     If String.IsNullOrWhiteSpace(line) Then Continue For
 
                     Dim columns As String() = line.Split(","c)
                 If columns.Length >= 4 Then
-                    Dim name As String = columns(0).Trim()
-                    Dim gender As String = columns(1).Trim()
-                    Dim age As String = columns(2).Trim()
-                    Dim id As String = columns(3).Trim()
+                            Dim contractorNameKanji As String = columns(0).Trim()
+                            Dim contractorNameKana As String = columns(1).Trim()
+                            Dim contractorAddressKanji As String = columns(2).Trim()
+                            Dim contractorAddressKana As String = columns(3).Trim()
+                            Dim contractorDateofBirth As String = columns(4).Trim()
+                            Dim recipientNameKanji As String = columns(5).Trim()
+                            Dim recipientNameKana As String = columns(6).Trim()
+                            Dim recipientAddressKanji As String = columns(7).Trim()
+                            Dim recipientAddressKana As String = columns(8).Trim()
+                            Dim recipientDateofBirth As String = columns(9).Trim()
+                            Dim id As String = columns(10).Trim()
+                            Dim gender As String = columns(11).Trim()
+                            Dim age As String = AgeCalculator(DateOfBirthValidation(contractorDateofBirth))
 
-                        ' 2. ID 중복 체크
-                        Dim checkQuery As String = "SELECT COUNT(1) FROM UserTable WHERE Id = @Id"
+                            ' 2. ID 중복 체크
+                            Dim checkQuery As String = "SELECT COUNT(1) FROM UserTable WHERE Id = @Id"
                         Using checkCommand As New SQLiteCommand(checkQuery, connection)
                             checkCommand.Parameters.AddWithValue("@Id", id)
                             Dim count As Integer = Convert.ToInt32(checkCommand.ExecuteScalar())
 
                             If count = 0 Then
-                                ' 3. 중복되지 않는 데이터만 'wait' 상태로 Insert
-                            Dim insertQuery As String = "INSERT INTO UserTable (Id, Name, Gender, Age, current_process, InputSource) VALUES (@Id, @Name, @Gender, @Age, 'wait', 'Batch')"
-                                Using insertCommand As New SQLiteCommand(insertQuery, connection)
-                                    insertCommand.Parameters.AddWithValue("@Id", id)
-                                insertCommand.Parameters.AddWithValue("@Name", name)
-                                insertCommand.Parameters.AddWithValue("@Gender", gender)
+                                    ' 3. 중복되지 않는 데이터만 'wait' 상태로 Insert
+                                    Dim insertQuery As String = "INSERT INTO UserTable (Id, contractorNameKanji, contractorNameKana, contractorAddressKanji, contractorAddressKana, contractorDateofBirth, recipientNameKanji, recipientNameKana, recipientAddressKanji, recipientAddressKana, recipientDateofBirth, gender, age, current_process, InputSource) VALUES (@Id, @contractorNameKanji, @contractorNameKana, @contractorAddressKanji, @contractorAddressKana, @contractorDateofBirth, @recipientNameKanji, @recipientNameKana, @recipientAddressKanji, @recipientAddressKana, @recipientDateofBirth, @Gender, @Age, 'wait', 'Batch')"
+                                    Using insertCommand As New SQLiteCommand(insertQuery, connection)
+                                        insertCommand.Parameters.AddWithValue("@Id", id)
+                                        insertCommand.Parameters.AddWithValue("@contractorNameKanji", contractorNameKanji)
+                                        insertCommand.Parameters.AddWithValue("@contractorNameKana", contractorNameKana)
+                                        insertCommand.Parameters.AddWithValue("@contractorAddressKanji", contractorAddressKanji)
+                                        insertCommand.Parameters.AddWithValue("@contractorAddressKana", contractorAddressKana)
+                                        insertCommand.Parameters.AddWithValue("@contractorDateofBirth", contractorDateofBirth)
+                                        insertCommand.Parameters.AddWithValue("@recipientNameKanji", recipientNameKanji)
+                                        insertCommand.Parameters.AddWithValue("@recipientNameKana", recipientNameKana)
+                                        insertCommand.Parameters.AddWithValue("@recipientAddressKanji", recipientAddressKanji)
+                                        insertCommand.Parameters.AddWithValue("@recipientAddressKana", recipientAddressKana)
+                                        insertCommand.Parameters.AddWithValue("@recipientDateofBirth", recipientDateofBirth)
+                                        insertCommand.Parameters.AddWithValue("@Gender", gender)
                                 insertCommand.Parameters.AddWithValue("@Age", age)
                                     insertCommand.ExecuteNonQuery()
                                     SharedUtils.LogMessage(logFile, $"[Success] ID: {id} - 데이터가 wait 상태로 Insert 되었습니다.")

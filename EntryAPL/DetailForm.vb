@@ -1,7 +1,10 @@
 Imports System
-Imports System.Windows.Forms
-Imports System.Drawing
 Imports System.Data.SQLite
+Imports System.Drawing
+Imports System.Text.RegularExpressions
+Imports System.Windows.Forms
+Imports MeCab
+Imports SharedLibrary
 
 Public Class DetailForm
     Inherits Form
@@ -10,19 +13,27 @@ Public Class DetailForm
     Private currentId As String
     Private pattern As String
     Private input As String
+    Private ReadOnly mecabTagger As MeCabTagger
+    Private isFormLoaded As Boolean = False
 
 
     Private txtId As TextBox
-    Private txtContractorNameKanji As TextBox
-    Private txtContractorNameKana As TextBox
-    Private txtContractorAddressKanji As TextBox
+    Private WithEvents txtContractorNameKanji As TextBox
+    Private WithEvents txtContractorNameKana As TextBox
+    Private WithEvents txtContractorAddressKanji As TextBox
     Private txtContractorAddressKana As TextBox
-    Private txtContractorDateofBirth As TextBox
-    Private txtRecipientNameKanji As TextBox
-    Private txtRecipientNameKana As TextBox
-    Private txtRecipientAddressKanji As TextBox
+    Private cmbContractorDateofBirthEra As ComboBox
+    Private WithEvents txtContractorDateofBirthYear As TextBox
+    Private cmbContractorDateofBirthMonth As ComboBox
+    Private cmbContractorDateofBirthDay As ComboBox
+    Private WithEvents txtRecipientNameKanji As TextBox
+    Private WithEvents txtRecipientNameKana As TextBox
+    Private WithEvents txtRecipientAddressKanji As TextBox
     Private txtRecipientAddressKana As TextBox
-    Private txtRecipientDateofBirth As TextBox
+    Private cmbRecipientDateofBirthEra As ComboBox
+    Private WithEvents txtRecipientDateofBirthYear As TextBox
+    Private cmbRecipientDateofBirthMonth As ComboBox
+    Private cmbRecipientDateofBirthDay As ComboBox
     Private cmbGender As ComboBox
     Private txtAge As TextBox
     Private txtProcess As TextBox
@@ -32,90 +43,6 @@ Public Class DetailForm
     Private btnAgeInput As Button
     Private btnCancel As Button
 
-    Function KanjiValidation(input As String) As Boolean
-        pattern = "^[\u30A0-\u30FF\u4E00-\u9FFF\s]+$"
-        Return Regex.IsMatch(input, pattern)
-    End Function
-    Function KanaValidation(input As String) As Boolean
-        pattern = "^[\u30A0-\u30FF\s]+$"
-        Return Regex.IsMatch(input, pattern)
-    End Function
-    Function AddressValidation(input As String) As Boolean
-        pattern = "^[0-9A-Za-z\u0370-\u03FF\u3040-\u30FF\u31F0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF\uFF10-\uFF19\uFF21-\uFF3A\uFF41-\uFF5A\uFF65-\uFF9F、。・ー「」『』【】\s]+$"
-        Return Regex.IsMatch(input, pattern)
-    End Function
-    Function DateOfBirthValidation(input As String) As (Valid As Boolean, DateOfBirth As DateTime)
-        Dim dobPattern As New Regex(
-        "^(?:" &
-        "(\d{4})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12][0-9]|3[01])|" &
-        "(\d{4})年(0?[1-9]|1[0-2])月(0?[1-9]|[12][0-9]|3[01])日|" &
-        "(明治|大正|昭和|平成|令和)(\d{1,2})年(0?[1-9]|1[0-2])月(0?[1-9]|[12][0-9]|3[01])日" &
-        ")$",
-        RegexOptions.Compiled
-    )
-        Dim eraRanges As New Dictionary(Of String, (Integer, Integer, Integer, Integer, Integer, Integer)) From {
-        {"明治", (1868, 9, 8, 1912, 7, 29)},
-        {"大正", (1912, 7, 30, 1926, 12, 24)},
-        {"昭和", (1926, 12, 25, 1989, 1, 7)},
-        {"平成", (1989, 1, 8, 2019, 4, 30)},
-        {"令和", (2019, 5, 1, 9999, 12, 31)}
-    }
-        Dim m As Match = dobPattern.Match(input.Trim())
-        Dim year As Integer, month As Integer, day As Integer
-
-        If m.Groups(1).Success Then
-            year = CInt(m.Groups(1).Value)
-            month = CInt(m.Groups(2).Value)
-            day = CInt(m.Groups(3).Value)
-
-        ElseIf m.Groups(4).Success Then
-            year = CInt(m.Groups(4).Value)
-            month = CInt(m.Groups(5).Value)
-            day = CInt(m.Groups(6).Value)
-
-        ElseIf m.Groups(7).Success Then
-            Dim eraName = m.Groups(7).Value
-            Dim eraYear = CInt(m.Groups(8).Value)
-            month = CInt(m.Groups(9).Value)
-            day = CInt(m.Groups(10).Value)
-
-            Dim era = eraRanges(eraName)
-            year = era.Item1 + eraYear - 1
-
-            Dim dobEra As Date
-            Try
-                dobEra = New Date(year, month, day)
-            Catch ex As ArgumentOutOfRangeException
-                Return (False, DateTime.MinValue)
-            End Try
-
-            Dim startEra As New Date(era.Item1, era.Item2, era.Item3)
-            Dim endEra As New Date(era.Item4, era.Item5, era.Item6)
-            If dobEra < startEra OrElse dobEra > endEra Then
-                Return (False, DateTime.MinValue)
-            End If
-        End If
-
-        Try
-            Dim dob As New DateTime(year, month, day)
-            Return (True, dob)
-        Catch ex As ArgumentOutOfRangeException
-            Return (False, DateTime.MinValue)
-        End Try
-    End Function
-    Function AgeCalculator(DateOfBirth As DateTime) As Integer
-        Dim today As DateTime = Date.Today
-        Dim age As Integer
-        If DateOfBirth > Date.Today Then
-            Return 0
-        End If
-        age = today.Year - DateOfBirth.Year
-        If (today.Month < DateOfBirth.Month) OrElse (today.Month = DateOfBirth.Month AndAlso today.Day < DateOfBirth.Day) Then
-            age -= 1
-        End If
-        Return age
-    End Function
-
     Public Sub New(connString As String, id As String)
         InitializeComponent()
         Me.connectionString = connString
@@ -123,8 +50,58 @@ Public Class DetailForm
 
         InitializeUI()
         LoadData()
+        Try
+            Dim param As New MeCabParam()
+            param.DicDir = "......\MeCab\dic\ipadic"
+            mecabTagger = mecabTagger.Create(param)
+        Catch ex As Exception
+            MessageBox.Show("MeCab 초기화에 실패했습니다: " & ex.Message)
+        End Try
     End Sub
+    Private Function InputToKatakana(input As String) As String
+        If mecabTagger Is Nothing Then
+            Return "[MeCab 초기화에 실패했습니다]"
+        End If
 
+        Dim node As MeCabNode = mecabTagger.ParseToNode(input)
+        Dim readingResult As String = ""
+
+        While node IsNot Nothing
+            If node.Stat = MeCabNodeStat.Nor Then
+                Dim features As String() = node.Feature.Split(","c)
+                If features.Length >= 8 AndAlso Not String.IsNullOrEmpty(features(7)) Then
+                    readingResult &= features(7)
+                Else
+                    readingResult &= node.Surface
+                End If
+            End If
+            node = node.Next
+        End While
+
+        Return readingResult
+    End Function
+    Function DateOfBirthSlicer(DateOfBirth As String) As String()
+        Dim sliced(2) As String
+        Dim dobPattern As New Regex(
+        "^(?:" &
+        "(明治|大正|昭和|平成|令和)(\d{1,2})年(0?[1-9]|1[0-2])月([1-9]|[12][0-9]|3[01])日|" &
+        "(西暦)(\d{4})年([1-9]|1[0-2])月([1-9]|[12][0-9]|3[01])日|" &
+        ")$",
+        RegexOptions.Compiled
+    )
+        Dim m As Match = dobPattern.Match(DateOfBirth)
+
+        If m.Groups(1).Success Then
+            sliced(0) = m.Groups(2).Value.ToString
+            sliced(1) = m.Groups(3).Value.ToString
+            sliced(2) = m.Groups(4).Value.ToString
+        ElseIf m.Groups(5).Success Then
+            sliced(0) = m.Groups(6).Value.ToString
+            sliced(1) = m.Groups(7).Value.ToString
+            sliced(2) = m.Groups(8).Value.ToString
+        End If
+        Return sliced
+    End Function
     Private Sub InitializeUI()
         Me.Text = "데이터 상세 및 수정"
         Me.Size = New Size(320, 320)
@@ -144,13 +121,13 @@ Public Class DetailForm
 
         ' 2. ContractorNameKanji
         Me.Controls.Add(New Label() With {.Text = "계약자 명(한자):", .Location = New Point(20, yPos), .AutoSize = True})
-        txtContractorNameKanji = New TextBox() With {.Location = New Point(120, yPos), .Width = 300}
+        txtContractorNameKanji = New TextBox() With {.Location = New Point(120, yPos), .Width = 300, .MaxLength = 12}
         Me.Controls.Add(txtContractorNameKanji)
         yPos += spacing
 
         ' 3. ContractorNameKana
         Me.Controls.Add(New Label() With {.Text = "계약자 명(카나):", .Location = New Point(20, yPos), .AutoSize = True})
-        txtContractorNameKana = New TextBox() With {.Location = New Point(120, yPos), .Width = 300}
+        txtContractorNameKana = New TextBox() With {.Location = New Point(120, yPos), .Width = 300, .MaxLength = 20}
         Me.Controls.Add(txtContractorNameKana)
         yPos += spacing
 
@@ -168,19 +145,31 @@ Public Class DetailForm
 
         ' 6. ContractorDateofBirth
         Me.Controls.Add(New Label() With {.Text = "계약자 생년월일:", .Location = New Point(20, yPos), .AutoSize = True})
-        txtContractorDateofBirth = New TextBox() With {.Location = New Point(120, yPos), .Width = 300}
-        Me.Controls.Add(txtContractorDateofBirth)
+        Me.Controls.Add(New Label() With {.Text = "年", .Location = New Point(210, yPos), .AutoSize = True})
+        Me.Controls.Add(New Label() With {.Text = "月", .Location = New Point(270, yPos), .AutoSize = True})
+        Me.Controls.Add(New Label() With {.Text = "日", .Location = New Point(330, yPos), .AutoSize = True})
+        cmbContractorDateofBirthEra = New ComboBox() With {.Location = New Point(120, yPos), .Width = 50, .DropDownStyle = ComboBoxStyle.DropDownList}
+        cmbContractorDateofBirthEra.Items.AddRange(New String() {"明治", "大正", "昭和", "平成", "令和", "西暦"})
+        txtContractorDateofBirthYear = New TextBox() With {.Location = New Point(170, yPos), .Width = 40}
+        cmbContractorDateofBirthMonth = New ComboBox() With {.Location = New Point(230, yPos), .Width = 40, .DropDownStyle = ComboBoxStyle.DropDownList}
+        cmbContractorDateofBirthMonth.Items.AddRange(New String() {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"})
+        cmbContractorDateofBirthDay = New ComboBox() With {.Location = New Point(290, yPos), .Width = 40, .DropDownStyle = ComboBoxStyle.DropDownList}
+        cmbContractorDateofBirthDay.Items.AddRange(New String() {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"})
+        Me.Controls.Add(cmbContractorDateofBirthEra)
+        Me.Controls.Add(txtContractorDateofBirthYear)
+        Me.Controls.Add(cmbContractorDateofBirthMonth)
+        Me.Controls.Add(cmbContractorDateofBirthDay)
         yPos += spacing
 
         ' 7. RecipientNameKanji
         Me.Controls.Add(New Label() With {.Text = "수취인 명(한자):", .Location = New Point(20, yPos), .AutoSize = True})
-        txtRecipientNameKanji = New TextBox() With {.Location = New Point(120, yPos), .Width = 300}
+        txtRecipientNameKanji = New TextBox() With {.Location = New Point(120, yPos), .Width = 300, .MaxLength = 12}
         Me.Controls.Add(txtRecipientNameKanji)
         yPos += spacing
 
         ' 8. RecipientNameKana
         Me.Controls.Add(New Label() With {.Text = "수취인 명(카나):", .Location = New Point(20, yPos), .AutoSize = True})
-        txtRecipientNameKana = New TextBox() With {.Location = New Point(120, yPos), .Width = 300}
+        txtRecipientNameKana = New TextBox() With {.Location = New Point(120, yPos), .Width = 300, .MaxLength = 20}
         Me.Controls.Add(txtRecipientNameKana)
         yPos += spacing
 
@@ -198,8 +187,20 @@ Public Class DetailForm
 
         ' 11. RecipientDateofBirth
         Me.Controls.Add(New Label() With {.Text = "수취인 생년월일:", .Location = New Point(20, yPos), .AutoSize = True})
-        txtRecipientDateofBirth = New TextBox() With {.Location = New Point(120, yPos), .Width = 300}
-        Me.Controls.Add(txtRecipientDateofBirth)
+        Me.Controls.Add(New Label() With {.Text = "年:", .Location = New Point(210, yPos), .AutoSize = True})
+        Me.Controls.Add(New Label() With {.Text = "月:", .Location = New Point(270, yPos), .AutoSize = True})
+        Me.Controls.Add(New Label() With {.Text = "日:", .Location = New Point(330, yPos), .AutoSize = True})
+        cmbRecipientDateofBirthEra = New ComboBox() With {.Location = New Point(120, yPos), .Width = 50, .DropDownStyle = ComboBoxStyle.DropDownList}
+        cmbRecipientDateofBirthEra.Items.AddRange(New String() {"明治", "大正", "昭和", "平成", "令和", "西暦"})
+        txtRecipientDateofBirthYear = New TextBox() With {.Location = New Point(170, yPos), .Width = 40}
+        cmbRecipientDateofBirthMonth = New ComboBox() With {.Location = New Point(230, yPos), .Width = 40, .DropDownStyle = ComboBoxStyle.DropDownList}
+        cmbRecipientDateofBirthMonth.Items.AddRange(New String() {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"})
+        cmbRecipientDateofBirthDay = New ComboBox() With {.Location = New Point(290, yPos), .Width = 40, .DropDownStyle = ComboBoxStyle.DropDownList}
+        cmbRecipientDateofBirthDay.Items.AddRange(New String() {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"})
+        Me.Controls.Add(cmbRecipientDateofBirthEra)
+        Me.Controls.Add(txtRecipientDateofBirthYear)
+        Me.Controls.Add(cmbRecipientDateofBirthMonth)
+        Me.Controls.Add(cmbRecipientDateofBirthDay)
         yPos += spacing
 
         ' 12. Gender
@@ -259,17 +260,40 @@ Public Class DetailForm
                             txtContractorNameKana.Text = reader("contractorNameKana").ToString()
                             txtContractorAddressKanji.Text = reader("contractorAddressKanji").ToString()
                             txtContractorAddressKana.Text = reader("contractorAddressKana").ToString()
-                            txtContractorDateofBirth.Text = reader("contractorDateofBirth").ToString()
+                            txtContractorDateofBirthYear.Text = DateOfBirthSlicer(reader("contractorDateofBirth").ToString()).GetValue(0)
                             txtRecipientNameKanji.Text = reader("recipientNameKanji").ToString()
                             txtRecipientNameKana.Text = reader("recipientNameKana").ToString()
                             txtRecipientAddressKanji.Text = reader("recipientAddressKanji").ToString()
                             txtRecipientAddressKana.Text = reader("recipientAddressKana").ToString()
-                            txtRecipientDateofBirth.Text = reader("recipientDateofBirth").ToString()
-
+                            txtRecipientDateofBirthYear.Text = DateOfBirthSlicer(reader("recipientDateofBirth").ToString()).GetValue(0)
 
                             Dim gen As String = reader("gender").ToString()
                             If cmbGender.Items.Contains(gen) Then
                                 cmbGender.SelectedItem = gen
+                            End If
+                            Dim contractorDateofBirthera As String = reader("contractorDateofBirth").ToString().Substring(0, 2)
+                            If cmbContractorDateofBirthEra.Items.Contains(contractorDateofBirthera) Then
+                                cmbContractorDateofBirthEra.SelectedItem = contractorDateofBirthera
+                            End If
+                            Dim contractorDateofBirthMonth As String = DateOfBirthSlicer(reader("contractorDateofBirth").ToString()).GetValue(1)
+                            If cmbContractorDateofBirthMonth.Items.Contains(contractorDateofBirthMonth) Then
+                                cmbContractorDateofBirthMonth.SelectedItem = contractorDateofBirthMonth
+                            End If
+                            Dim contractorDateofBirthDay As String = DateOfBirthSlicer(reader("contractorDateofBirth").ToString()).GetValue(2)
+                            If cmbContractorDateofBirthDay.Items.Contains(contractorDateofBirthDay) Then
+                                cmbContractorDateofBirthDay.SelectedItem = contractorDateofBirthDay
+                            End If
+                            Dim recipientDateofBirthera As String = reader("recipientDateofBirth").ToString().Substring(0, 2)
+                            If cmbRecipientDateofBirthEra.Items.Contains(recipientDateofBirthera) Then
+                                cmbRecipientDateofBirthEra.SelectedItem = recipientDateofBirthera
+                            End If
+                            Dim recipientDateofBirthMonth As String = DateOfBirthSlicer(reader("recipientDateofBirth").ToString()).GetValue(1)
+                            If cmbRecipientDateofBirthMonth.Items.Contains(recipientDateofBirthMonth) Then
+                                cmbRecipientDateofBirthMonth.SelectedItem = recipientDateofBirthMonth
+                            End If
+                            Dim recipientDateofBirthDay As String = DateOfBirthSlicer(reader("recipientDateofBirth").ToString()).GetValue(2)
+                            If cmbRecipientDateofBirthDay.Items.Contains(recipientDateofBirthDay) Then
+                                cmbRecipientDateofBirthDay.SelectedItem = recipientDateofBirthDay
                             End If
 
                             txtAge.Text = reader("age").ToString()
@@ -286,20 +310,20 @@ Public Class DetailForm
             MessageBox.Show($"데이터 로드 오류: {ex.Message}", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
             Me.Close()
         End Try
+        isFormLoaded = True
     End Sub
 
     Private Sub btnSave_Click(sender As Object, e As EventArgs)
-
         Dim contractorNameKanji As String = txtContractorNameKanji.Text.Trim()
         Dim contractorNameKana As String = txtContractorNameKana.Text.Trim()
         Dim contractorAddressKanji As String = txtContractorAddressKanji.Text.Trim()
         Dim contractorAddressKana As String = txtContractorAddressKana.Text.Trim()
-        Dim contractorDateofBirth As String = txtContractorDateofBirth.Text.Trim()
+        Dim contractorDateofBirth As String = $"{If(cmbContractorDateofBirthEra.SelectedItem IsNot Nothing, cmbContractorDateofBirthEra.SelectedItem.ToString(), "")}" & $"{txtContractorDateofBirthYear.Text.Trim()}年" & $"{If(cmbContractorDateofBirthMonth.SelectedItem IsNot Nothing, cmbContractorDateofBirthMonth.SelectedItem.ToString(), "")}月" & $"{If(cmbContractorDateofBirthDay.SelectedItem IsNot Nothing, cmbContractorDateofBirthDay.SelectedItem.ToString(), "")}日"
         Dim recipientNameKanji As String = txtRecipientNameKanji.Text.Trim()
         Dim recipientNameKana As String = txtRecipientNameKana.Text.Trim()
         Dim recipientAddressKanji As String = txtRecipientAddressKanji.Text.Trim()
         Dim recipientAddressKana As String = txtRecipientAddressKana.Text.Trim()
-        Dim recipientDateofBirth As String = txtRecipientDateofBirth.Text.Trim()
+        Dim recipientDateofBirth As String = $"{If(cmbRecipientDateofBirthEra.SelectedItem IsNot Nothing, cmbRecipientDateofBirthEra.SelectedItem.ToString(), "")}" & $"{txtRecipientDateofBirthYear.Text.Trim()}年" & $"{If(cmbRecipientDateofBirthMonth.SelectedItem IsNot Nothing, cmbRecipientDateofBirthMonth.SelectedItem.ToString(), "")}月" & $"{If(cmbRecipientDateofBirthDay.SelectedItem IsNot Nothing, cmbRecipientDateofBirthDay.SelectedItem.ToString(), "")}日"
         Dim age As String = txtAge.Text.Trim()
         Dim gender As String = If(cmbGender.SelectedItem IsNot Nothing, cmbGender.SelectedItem.ToString(), "")
 
@@ -307,8 +331,7 @@ Public Class DetailForm
             MessageBox.Show("계약자 명을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = KanjiValidation(contractorNameKanji)
-            If Flag = False Then
+            If KanjiValidation(contractorNameKanji) = False Then
                 MessageBox.Show("계약자 명을 한자로 입력해주세요. 상용한자에 없는 경우에는 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Return
             End If
@@ -318,8 +341,7 @@ Public Class DetailForm
             MessageBox.Show("계약자 명을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = KanaValidation(contractorNameKana)
-            If Flag = False Then
+            If KanaValidation(contractorNameKana) = False Then
                 MessageBox.Show("계약자 명을 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Return
             End If
@@ -329,8 +351,7 @@ Public Class DetailForm
             MessageBox.Show("계약자 주소를 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = AddressValidation(contractorAddressKanji)
-            If Flag = False Then
+            If AddressValidation(contractorAddressKanji) = False Then
                 MessageBox.Show("계약자 주소를 한자로 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Return
             End If
@@ -340,30 +361,41 @@ Public Class DetailForm
             MessageBox.Show("계약자 주소를 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = AddressValidation(contractorAddressKana)
-            If Flag = False Then
+            If AddressValidation(contractorAddressKana) = False Then
                 MessageBox.Show("계약자 주소를 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Return
             End If
         End If
 
-        If String.IsNullOrEmpty(contractorDateofBirth) Then
-            MessageBox.Show("계약자 생년월일을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        If cmbContractorDateofBirthEra.SelectedItem Is Nothing Then
+            MessageBox.Show("연호를 선택해 주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
-        Else
-            Dim Flag As Boolean = DateOfBirthValidation(contractorDateofBirth).Valid
-            If Flag = False Then
-                MessageBox.Show("계약자 생년월일을 올바르게 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
-                Return
-            End If
+        End If
+
+        If String.IsNullOrEmpty(txtContractorDateofBirthYear.Text) Then
+            MessageBox.Show("계약자 생년을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If cmbContractorDateofBirthMonth.SelectedItem Is Nothing Then
+            MessageBox.Show("계약자 생월을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If cmbContractorDateofBirthDay.SelectedItem Is Nothing Then
+            MessageBox.Show("계약자 생일을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If DateOfBirthValidation(recipientDateofBirth) = DateTime.MinValue Then
+            MessageBox.Show("계약자 생년월일을 올바르게 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
         End If
 
         If String.IsNullOrEmpty(recipientNameKanji) Then
             MessageBox.Show("수취인 명을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = KanjiValidation(recipientNameKanji)
-            If Flag = False Then
+            If KanjiValidation(recipientNameKanji) = False Then
                 MessageBox.Show("수취인 명을 한자로 입력해주세요. 상용한자에 없는 경우에는 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Return
             End If
@@ -373,8 +405,7 @@ Public Class DetailForm
             MessageBox.Show("수취인 명을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = KanaValidation(recipientNameKana)
-            If Flag = False Then
+            If KanaValidation(recipientNameKana) = False Then
                 MessageBox.Show("수취인 명을 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         End If
@@ -383,8 +414,7 @@ Public Class DetailForm
             MessageBox.Show("수취인 주소를 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = AddressValidation(recipientAddressKanji)
-            If Flag = False Then
+            If AddressValidation(recipientAddressKanji) = False Then
                 MessageBox.Show("수취인 주소를 한자로 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         End If
@@ -393,20 +423,33 @@ Public Class DetailForm
             MessageBox.Show("수취인 주소를 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = AddressValidation(recipientAddressKana)
-            If Flag = False Then
+            If AddressValidation(recipientAddressKana) = False Then
                 MessageBox.Show("수취인 주소를 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         End If
 
-        If String.IsNullOrEmpty(recipientDateofBirth) Then
-            MessageBox.Show("수취인 생년월일을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        If cmbRecipientDateofBirthEra.SelectedItem Is Nothing Then
+            MessageBox.Show("연호를 선택해 주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
-        Else
-            Dim Flag As Boolean = DateOfBirthValidation(recipientDateofBirth).Valid
-            If Flag = False Then
-                MessageBox.Show("수취인 생년월일을 올바르게 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
-            End If
+        End If
+
+        If String.IsNullOrEmpty(txtRecipientDateofBirthYear.Text) Then
+            MessageBox.Show("수취인 생년을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If cmbRecipientDateofBirthMonth.SelectedItem Is Nothing Then
+            MessageBox.Show("수취인 생월을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If cmbRecipientDateofBirthDay.SelectedItem Is Nothing Then
+            MessageBox.Show("수취인 생일을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If DateOfBirthValidation(recipientDateofBirth) = DateTime.MinValue Then
+            MessageBox.Show("수취인 생년월일을 올바르게 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
         End If
 
         Try
@@ -441,14 +484,16 @@ Public Class DetailForm
         Dim contractorNameKana As String = txtContractorNameKana.Text
         Dim contractorAddressKanji As String = txtContractorAddressKanji.Text
         Dim contractorAddressKana As String = txtContractorAddressKana.Text
-        Dim contractorDateofBirth As String = txtContractorDateofBirth.Text
+        Dim contractorDateofBirthEra As String = If(cmbContractorDateofBirthEra.SelectedItem IsNot Nothing, cmbContractorDateofBirthEra.SelectedItem.ToString(), "")
+        Dim contractorDateofBirthYear As String = txtContractorDateofBirthYear.Text
+        Dim contractorDateofBirthMonth As String = If(cmbContractorDateofBirthMonth.SelectedItem IsNot Nothing, cmbContractorDateofBirthMonth.SelectedItem.ToString(), "")
+        Dim contractorDateofBirthDay As String = If(cmbContractorDateofBirthDay.SelectedItem IsNot Nothing, cmbContractorDateofBirthDay.SelectedItem.ToString(), "")
 
         If String.IsNullOrEmpty(contractorNameKanji) Then
             MessageBox.Show("계약자 명을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = KanjiValidation(contractorNameKanji)
-            If Flag = False Then
+            If KanjiValidation(contractorNameKanji) = False Then
                 MessageBox.Show("계약자 명을 한자로 입력해주세요. 상용한자에 없는 경우에는 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         End If
@@ -457,8 +502,7 @@ Public Class DetailForm
             MessageBox.Show("계약자 명을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = KanaValidation(contractorNameKana)
-            If Flag = False Then
+            If KanaValidation(contractorNameKana) = False Then
                 MessageBox.Show("계약자 명을 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         End If
@@ -467,8 +511,7 @@ Public Class DetailForm
             MessageBox.Show("계약자 주소를 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = AddressValidation(contractorAddressKanji)
-            If Flag = False Then
+            If AddressValidation(contractorAddressKanji) = False Then
                 MessageBox.Show("계약자 주소를 한자로 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         End If
@@ -477,42 +520,139 @@ Public Class DetailForm
             MessageBox.Show("계약자 주소를 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
         Else
-            Dim Flag As Boolean = AddressValidation(contractorAddressKana)
-            If Flag = False Then
+            If AddressValidation(contractorAddressKana) = False Then
                 MessageBox.Show("계약자 주소를 카타카나로 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         End If
 
-        If String.IsNullOrEmpty(contractorDateofBirth) Then
-            MessageBox.Show("계약자 생년월일을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        If String.IsNullOrEmpty(contractorDateofBirthEra) Then
+            MessageBox.Show("연호를 선택해 주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
-        Else
-            Dim Flag As Boolean = DateOfBirthValidation(contractorDateofBirth).Valid
-            If Flag = False Then
-                MessageBox.Show("계약자 생년월일을 올바르게 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
-            End If
+        End If
+
+        If String.IsNullOrEmpty(contractorDateofBirthYear) Then
+            MessageBox.Show("계약자 생년을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If String.IsNullOrEmpty(contractorDateofBirthMonth) Then
+            MessageBox.Show("계약자 생월을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If String.IsNullOrEmpty(contractorDateofBirthDay) Then
+            MessageBox.Show("계약자 생일을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
         End If
 
         txtRecipientNameKanji.Text = contractorNameKanji
         txtRecipientNameKana.Text = contractorNameKana
         txtRecipientAddressKanji.Text = contractorAddressKanji
         txtRecipientAddressKana.Text = contractorAddressKana
-        txtRecipientDateofBirth.Text = contractorDateofBirth
+        cmbRecipientDateofBirthEra.SelectedItem = contractorDateofBirthEra
+        txtRecipientDateofBirthYear.Text = contractorDateofBirthYear
+        cmbRecipientDateofBirthMonth.SelectedItem = contractorDateofBirthMonth
+        cmbRecipientDateofBirthDay.SelectedItem = contractorDateofBirthDay
+
     End Sub
     Private Sub btnAgeInput_Click(sender As Object, e As EventArgs)
-        Dim contractorDateofBirth As String = txtContractorDateofBirth.Text
+        Dim contractorDateofBirthEra As String = If(cmbContractorDateofBirthEra.SelectedItem IsNot Nothing, cmbContractorDateofBirthEra.SelectedItem.ToString(), "")
+        Dim contractorDateofBirthYear As String = txtContractorDateofBirthYear.Text
+        Dim contractorDateofBirthMonth As String = If(cmbContractorDateofBirthMonth.SelectedItem IsNot Nothing, cmbContractorDateofBirthMonth.SelectedItem.ToString(), "")
+        Dim contractorDateofBirthDay As String = If(cmbContractorDateofBirthDay.SelectedItem IsNot Nothing, cmbContractorDateofBirthDay.SelectedItem.ToString(), "")
+        Dim contractorDateofBirth As String = contractorDateofBirthEra & $"{txtContractorDateofBirthYear.Text.Trim()}年" & contractorDateofBirthMonth & "月" & contractorDateofBirthDay & "日"
 
-        If String.IsNullOrEmpty(contractorDateofBirth) Then
-            MessageBox.Show("계약자 생년월일을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        If String.IsNullOrEmpty(contractorDateofBirthEra) Then
+            MessageBox.Show("연호를 선택해 주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
             Return
-        Else
-            Dim Flag As Boolean = DateOfBirthValidation(contractorDateofBirth).Valid
-            If Flag = False Then
-                MessageBox.Show("계약자 생년월일을 올바르게 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
-            End If
+        End If
+
+        If String.IsNullOrEmpty(contractorDateofBirthYear) Then
+            MessageBox.Show("계약자 생년을 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If String.IsNullOrEmpty(contractorDateofBirthMonth) Then
+            MessageBox.Show("계약자 생월을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If String.IsNullOrEmpty(contractorDateofBirthDay) Then
+            MessageBox.Show("계약자 생일을 선택해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        If DateOfBirthValidation(contractorDateofBirth) = DateTime.MinValue Then
+            MessageBox.Show("계약자 생년월일을 올바르게 입력해주세요", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information)
         End If
         Dim DateOfBirth As DateTime
-        DateOfBirth = DateOfBirthValidation(contractorDateofBirth).DateOfBirth
+        DateOfBirth = DateOfBirthValidation(contractorDateofBirth)
         txtAge.Text = AgeCalculator(DateOfBirth).ToString
+    End Sub
+    Private Sub txtContractorNameKanjiTextChanged(sender As Object, e As EventArgs) Handles txtContractorNameKanji.TextChanged
+        input = txtContractorNameKanji.Text.Trim()
+        If String.IsNullOrWhiteSpace(input) Then
+            txtContractorNameKana.Text = ""
+            Return
+        End If
+        txtContractorNameKana.Text = InputToKatakana(input)
+    End Sub
+    Private Sub txtContractorNameKanaTextChanged(sender As Object, e As EventArgs) Handles txtContractorNameKana.TextChanged
+        If Not isFormLoaded Then Return
+        input = txtContractorNameKana.Text.Trim()
+        Dim Pattern As String = "^[\u30A0-\u30FF\s]*$"
+        If Not Regex.IsMatch(input, Pattern) Then
+            MessageBox.Show("계약자 명을 카타카나로만 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            txtContractorNameKana.Focus()
+        End If
+    End Sub
+    Private Sub txtContractorAddressKanjiTextChanged(sender As Object, e As EventArgs) Handles txtContractorAddressKanji.TextChanged
+        input = txtContractorAddressKanji.Text.Trim()
+        If String.IsNullOrWhiteSpace(input) Then
+            txtContractorAddressKana.Text = ""
+            Return
+        End If
+        txtContractorAddressKana.Text = InputToKatakana(input)
+    End Sub
+    Private Sub txtContractorDateofBirthYearTextChanged(sender As Object, e As EventArgs) Handles txtContractorDateofBirthYear.TextChanged
+        input = txtContractorDateofBirthYear.Text.Trim()
+        Dim Pattern As String = "^\d{0,4}$"
+        If Not Regex.IsMatch(input, Pattern) Then
+            MessageBox.Show("한자리에서 네자릿수의 숫자만 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            txtContractorDateofBirthYear.Focus()
+        End If
+    End Sub
+    Private Sub txtRecipientNameKanjiTextChanged(sender As Object, e As EventArgs) Handles txtRecipientNameKanji.TextChanged
+        input = txtRecipientNameKanji.Text.Trim()
+        If String.IsNullOrWhiteSpace(input) Then
+            txtRecipientNameKana.Text = ""
+            Return
+        End If
+        txtRecipientNameKana.Text = InputToKatakana(input)
+    End Sub
+    Private Sub txtRecipientNameKanaTextChanged(sender As Object, e As EventArgs) Handles txtRecipientNameKana.TextChanged
+        If Not isFormLoaded Then Return
+        input = txtRecipientNameKana.Text.Trim()
+        Dim Pattern As String = "^[\u30A0-\u30FF\s]*$"
+        If Not Regex.IsMatch(input, Pattern) Then
+            MessageBox.Show("수취인 명을 카타카나로만 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            txtRecipientNameKana.Focus()
+        End If
+    End Sub
+    Private Sub txtRecipientAddressKanjiTextChanged(sender As Object, e As EventArgs) Handles txtRecipientAddressKanji.TextChanged
+        input = txtRecipientAddressKanji.Text.Trim()
+        If String.IsNullOrWhiteSpace(input) Then
+            txtRecipientAddressKana.Text = ""
+            Return
+        End If
+        txtRecipientAddressKana.Text = InputToKatakana(input)
+    End Sub
+    Private Sub txtRecipientDateofBirthYearTextChanged(sender As Object, e As EventArgs) Handles txtRecipientDateofBirthYear.TextChanged
+        input = txtRecipientDateofBirthYear.Text.Trim()
+        Dim Pattern As String = "^\d{0,4}$"
+        If Not Regex.IsMatch(input, Pattern) Then
+            MessageBox.Show("한자리에서 네자릿수의 숫자만 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            txtRecipientDateofBirthYear.Focus()
+        End If
     End Sub
 End Class
